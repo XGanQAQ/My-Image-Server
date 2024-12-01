@@ -9,8 +9,6 @@ namespace HttpImgServer
     public class ImgServer
     {
         private const string UploadDirectory = "uploads";
-        private static string _boundary = "--_boundary"; //废弃
-
         public static void Main(string[] args)
         {
             // 确保存储图片的目录存在
@@ -23,16 +21,16 @@ namespace HttpImgServer
             serverSocket.Bind(new IPEndPoint(IPAddress.Any, 8080)); // 监听8080端口
             serverSocket.Listen(10); // 最大等待连接数
 
-            Console.WriteLine("Server started on http://localhost:8080...");
+            Console.WriteLine("INFO:Server started on http://localhost:8080...");
 
             while (true)
             {
-                Console.WriteLine("wait for a client to connect...");
+                Console.WriteLine("INFO:wait for a client to connect...");
                 var clientSocket = serverSocket.Accept();
-                Console.WriteLine("Client connected.");
-                Console.WriteLine("Start handling client request...");
+                Console.WriteLine("INFO:Client connected.");
+                Console.WriteLine("INFO:Start handling client request...");
                 HandleClient(clientSocket);
-                Console.WriteLine("Client request handled.");
+                Console.WriteLine("INFO:Client request handled.");
             }
         }
 
@@ -47,19 +45,19 @@ namespace HttpImgServer
             int bytesReaded = 0;
 
             bytesRead = clientSocket.Receive(buffer);
-            Console.WriteLine("Received Length :" + bytesRead + " bytes.");
+            Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
             receivedData.AddRange(buffer.Take(bytesRead));
             bytesReaded += bytesRead;
             if (bytesRead < 4096)
             {
-                Console.WriteLine("Recived Over");
+                Console.WriteLine("INFO:Recived Over");
             }
             else
             {
                 while ((bytesRead = clientSocket.Receive(buffer)) > 0)
                 {
                     // 将接收到的字节添加到接收数据列表
-                    Console.WriteLine("Received Length :" + bytesRead + " bytes.");
+                    Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
                     receivedData.AddRange(buffer.Take(bytesRead));
                     bytesReaded += bytesRead;
                     // 如果接收的数据少于缓冲区的大小，表示接收完毕
@@ -69,7 +67,7 @@ namespace HttpImgServer
                     }
                 }
 
-                Console.WriteLine("Recived Over");
+                Console.WriteLine("INFO:Recived Over");
             }
 
             // 处理接收到的完整数据
@@ -82,23 +80,23 @@ namespace HttpImgServer
 
             if (httpMessageString.StartsWith("POST"))
             {
-                Console.WriteLine("Receive a POST request");
+                Console.WriteLine("INFO:Receive a POST request");
                 //HandleFileBoundaryUpload(clientSocket, buffer, bytesRead);
                 HandleJpgUpload(clientSocket, fileData, bytesReaded,httpMessageString);
             }
             else if (httpMessageString.StartsWith("GET"))
             {
-                Console.WriteLine("Get a GET request");
+                Console.WriteLine("INFO:Get a GET request");
                 ServeFile(clientSocket, httpMessageString);
             }
             else
             {
-                Console.WriteLine("Invalid request.");
+                Console.WriteLine("INFO:Invalid request.");
                 SendResponse(clientSocket, "HTTP/1.1 400 Bad Request", "Invalid Request.");
             }
 
             clientSocket.Close();
-            Console.WriteLine("Closing connection.");
+            Console.WriteLine("INFO:Closing connection.");
         }
 
         private static void HandleJpgUpload(Socket clientSocket, byte[] buffer, int bytesRead,string httpMessage)
@@ -119,6 +117,10 @@ namespace HttpImgServer
 
             // 3. 保存文件
             string fileName = GetFilenameFromContentDisposition(httpMessage);
+            if (fileName == null)
+            {
+                fileName = "unnamed.jpg";
+            }
             string filePath = Path.Combine(UploadDirectory, fileName);
             byte[] fileData = new byte[fileDataLength];
 
