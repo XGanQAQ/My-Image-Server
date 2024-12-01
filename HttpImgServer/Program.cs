@@ -26,25 +26,62 @@ namespace HttpImgServer
 
             while (true)
             {
+                Console.WriteLine("wait for a client to connect...");
                 var clientSocket = serverSocket.Accept();
+                Console.WriteLine("Client connected.");
+                Console.WriteLine("Start handling client request...");
                 HandleClient(clientSocket);
+                Console.WriteLine("Client request handled.");
             }
         }
 
         private static void HandleClient(Socket clientSocket)
         {
-            byte[] buffer = new byte[1024 * 8]; // 接收缓冲区
-            int bytesRead = clientSocket.Receive(buffer); // 读取到的数据长度
-            string httpMessageString = Encoding.UTF8.GetString(buffer, 0, bytesRead); // 解析数据为字符串
-            Console.WriteLine("Received message:");
-            ParseHttpMessage(httpMessageString);
-            Console.WriteLine("End of message.");
+            // 设置缓冲区大小
+            const int bufferSize = 8192;  // 缓冲区大小根据实际情况调整
+            byte[] buffer = new byte[bufferSize];
+            List<byte> receivedData = new List<byte>();
+    
+            int bytesRead;
+            int bytesReaded = 0;
+            
+            bytesRead = clientSocket.Receive(buffer);
+            Console.WriteLine("Received Length :" + bytesRead + " bytes.");
+            receivedData.AddRange(buffer.Take(bytesRead));
+            bytesReaded += bytesRead;
+            if (bytesRead<4096)
+            {
+                Console.WriteLine("Recived Over");
+            }
+            else
+            {
+                while ((bytesRead = clientSocket.Receive(buffer)) > 0)
+                {
+                    // 将接收到的字节添加到接收数据列表
+                    Console.WriteLine("Received Length :" + bytesRead + " bytes.");
+                    receivedData.AddRange(buffer.Take(bytesRead));
+                    bytesReaded += bytesRead;
+                    // 如果接收的数据少于缓冲区的大小，表示接收完毕
+                    if (bytesRead < bufferSize)
+                    {
+                        break;
+                    }
+                }
+                Console.WriteLine("Recived Over");
+            }
+            // 处理接收到的完整数据
+            byte[] fileData = receivedData.ToArray();
+            
+            string httpMessageString = Encoding.UTF8.GetString(fileData, 0,bytesReaded ); // 解析数据为字符串
+            //Console.WriteLine("Received message:");
+            //ParseHttpMessage(httpMessageString);
+            //Console.WriteLine("End of message.");
             
             if (httpMessageString.StartsWith("POST"))
             {
                 Console.WriteLine("Receive a POST request");
                 //HandleFileBoundaryUpload(clientSocket, buffer, bytesRead);
-                HandleJpgUpload(clientSocket,buffer,bytesRead);
+                HandleJpgUpload(clientSocket,fileData,bytesReaded);
             }
             else if (httpMessageString.StartsWith("GET"))
             {
@@ -58,6 +95,7 @@ namespace HttpImgServer
             }
 
             clientSocket.Close();
+            Console.WriteLine("Closing connection.");
         }
 
         private static void HandleFileBoundaryUpload(Socket clientSocket, byte[] buffer, int bytesRead)
