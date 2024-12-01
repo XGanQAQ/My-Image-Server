@@ -9,7 +9,8 @@ namespace HttpImgServer
     public class ImgServer
     {
         private const string UploadDirectory = "uploads";
-        private static string _boundary = "--_boundary";
+        private static string _boundary = "--_boundary"; //废弃
+
         public static void Main(string[] args)
         {
             // 确保存储图片的目录存在
@@ -38,18 +39,18 @@ namespace HttpImgServer
         private static void HandleClient(Socket clientSocket)
         {
             // 设置缓冲区大小
-            const int bufferSize = 8192;  // 缓冲区大小根据实际情况调整
+            const int bufferSize = 8192; // 缓冲区大小根据实际情况调整
             byte[] buffer = new byte[bufferSize];
             List<byte> receivedData = new List<byte>();
-    
+
             int bytesRead;
             int bytesReaded = 0;
-            
+
             bytesRead = clientSocket.Receive(buffer);
             Console.WriteLine("Received Length :" + bytesRead + " bytes.");
             receivedData.AddRange(buffer.Take(bytesRead));
             bytesReaded += bytesRead;
-            if (bytesRead<4096)
+            if (bytesRead < 4096)
             {
                 Console.WriteLine("Recived Over");
             }
@@ -67,21 +68,23 @@ namespace HttpImgServer
                         break;
                     }
                 }
+
                 Console.WriteLine("Recived Over");
             }
+
             // 处理接收到的完整数据
             byte[] fileData = receivedData.ToArray();
-            
-            string httpMessageString = Encoding.UTF8.GetString(fileData, 0,bytesReaded ); // 解析数据为字符串
+
+            string httpMessageString = Encoding.UTF8.GetString(fileData, 0, bytesReaded); // 解析数据为字符串
             //Console.WriteLine("Received message:");
             //ParseHttpMessage(httpMessageString);
             //Console.WriteLine("End of message.");
-            
+
             if (httpMessageString.StartsWith("POST"))
             {
                 Console.WriteLine("Receive a POST request");
                 //HandleFileBoundaryUpload(clientSocket, buffer, bytesRead);
-                HandleJpgUpload(clientSocket,fileData,bytesReaded);
+                HandleJpgUpload(clientSocket, fileData, bytesReaded,httpMessageString);
             }
             else if (httpMessageString.StartsWith("GET"))
             {
@@ -98,40 +101,12 @@ namespace HttpImgServer
             Console.WriteLine("Closing connection.");
         }
 
-        private static void HandleFileBoundaryUpload(Socket clientSocket, byte[] buffer, int bytesRead)
-        {
-            string str = _boundary ;
-            byte[] byteArray = Encoding.UTF8.GetBytes(str);
-            
-            int startIndex = Array.IndexOf(buffer, byteArray);
-            int endIndex = Array.LastIndexOf(buffer,  byteArray);
-
-            if (startIndex == -1 || endIndex == -1)
-            {
-                SendResponse(clientSocket, "HTTP/1.1 400 Bad Request", "Invalid file upload request.");
-                return;
-            }
-
-            string fileName = "uploaded_image.jpg";
-            string filePath = Path.Combine(UploadDirectory, fileName);
-            byte[] fileData = new byte[bytesRead - (endIndex + _boundary.Length)];
-
-            Array.Copy(buffer, endIndex + _boundary.Length, fileData, 0, fileData.Length);
-
-            // 保存文件
-            File.WriteAllBytes(filePath, fileData);
-            
-            string fileUrl = "http://localhost:8080/" + UploadDirectory + "/" + fileName;
-            
-            SendResponse(clientSocket, "HTTP/1.1 200 OK", $"File uploaded successfully! Access it at {fileUrl}");
-        }
-
-        private static void HandleJpgUpload(Socket clientSocket, byte[] buffer, int bytesRead)
+        private static void HandleJpgUpload(Socket clientSocket, byte[] buffer, int bytesRead,string httpMessage)
         {
             // 1. 确认请求头和消息体之间的分隔符 "\r\n\r\n"
             byte[] headerDelimiter = new byte[] { 13, 10, 13, 10 }; // "\r\n\r\n" 的字节表示
             int headerEndIndex = FindHeaderEndIndex(buffer, headerDelimiter, bytesRead);
-    
+
             if (headerEndIndex == -1 || headerEndIndex + 4 >= bytesRead)
             {
                 SendResponse(clientSocket, "HTTP/1.1 400 Bad Request", "Invalid file upload request.");
@@ -139,14 +114,14 @@ namespace HttpImgServer
             }
 
             // 2. 跳过请求头和空行，获取文件数据起始位置
-            int fileDataStartIndex = headerEndIndex + 4;  // 跳过 \r\n\r\n 空行
+            int fileDataStartIndex = headerEndIndex + 4; // 跳过 \r\n\r\n 空行
             int fileDataLength = bytesRead - fileDataStartIndex;
 
             // 3. 保存文件
-            string fileName = "uploaded_image.jpg";
+            string fileName = GetFilenameFromContentDisposition(httpMessage);
             string filePath = Path.Combine(UploadDirectory, fileName);
             byte[] fileData = new byte[fileDataLength];
-    
+
             // 4. 将文件数据复制到新的数组中
             Array.Copy(buffer, fileDataStartIndex, fileData, 0, fileDataLength);
 
@@ -185,6 +160,7 @@ namespace HttpImgServer
                     return i;
                 }
             }
+
             return -1; // 未找到分隔符
         }
 
@@ -210,14 +186,35 @@ namespace HttpImgServer
 
         private static void SendResponse(Socket clientSocket, string statusCode, string content)
         {
-            string response = 
+            string response =
                 $"{statusCode}\r\n" +
                 $"Content-Length: {content.Length}\r\n" +
                 $"\r\n" +
                 $"{content}";
             clientSocket.Send(Encoding.UTF8.GetBytes(response));
         }
-        
+
+        public static string GetFilenameFromContentDisposition(string httpRequest)
+        {
+            string[] lines = httpRequest.Split("\r\n");
+            foreach (string line in lines)
+            {
+                if (line.StartsWith("Content-Disposition"))
+                {
+                    string[] parts = line.Split(';');
+                    foreach (string part in parts)
+                    {
+                        if (part.Trim().StartsWith("filename="))
+                        {
+                            string filename = part.Split('=')[1].Trim().Trim('"');
+                            return filename;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
         public static void ParseHttpMessage(string httpMessage)
         {
             string[] lines = httpMessage.Split("\r\n");
@@ -262,4 +259,3 @@ namespace HttpImgServer
         }
     }
 }
-
