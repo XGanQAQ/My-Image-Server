@@ -19,7 +19,7 @@ namespace HttpImgServer
 
             var serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             serverSocket.Bind(new IPEndPoint(IPAddress.Any, 8080)); // 监听8080端口
-            serverSocket.Listen(10); // 最大等待连接数
+            serverSocket.Listen(100); // 最大等待连接数
 
             Console.WriteLine("INFO:Server started on http://localhost:8080...");
 
@@ -28,7 +28,7 @@ namespace HttpImgServer
                 Console.WriteLine("————————————————");
                 Console.WriteLine("INFO:wait for a client to connect...");
                 var clientSocket = serverSocket.Accept();
-                //Console.WriteLine("INFO:Client connected.");
+                Console.WriteLine("INFO:Client connected.");
                 //Console.WriteLine("INFO:Start handling client request...");
                 HandleClient(clientSocket);
                 Console.WriteLine("INFO:Client request handled.");
@@ -37,6 +37,7 @@ namespace HttpImgServer
 
         private static void HandleClient(Socket clientSocket)
         {
+            clientSocket.ReceiveTimeout = 3500;  // 设置接收超时时间
             // 设置缓冲区大小
             const int bufferSize = 8192; // 缓冲区大小根据实际情况调整
             byte[] buffer = new byte[bufferSize];
@@ -46,7 +47,7 @@ namespace HttpImgServer
             int bytesReaded = 0;
 
             bytesRead = clientSocket.Receive(buffer);
-            //Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
+            Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
             receivedData.AddRange(buffer.Take(bytesRead));
             bytesReaded += bytesRead;
             if (bytesRead < 4096)
@@ -58,7 +59,7 @@ namespace HttpImgServer
                 while ((bytesRead = clientSocket.Receive(buffer)) > 0)
                 {
                     // 将接收到的字节添加到接收数据列表
-                    //Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
+                    Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
                     receivedData.AddRange(buffer.Take(bytesRead));
                     bytesReaded += bytesRead;
                     // 如果接收的数据少于缓冲区的大小，表示接收完毕
@@ -75,9 +76,9 @@ namespace HttpImgServer
             byte[] fileData = receivedData.ToArray();
 
             string httpMessageString = Encoding.UTF8.GetString(fileData, 0, bytesReaded); // 解析数据为字符串
-            //Console.WriteLine("Received message:");
-            //ParseHttpMessage(httpMessageString);
-            //Console.WriteLine("End of message.");
+            Console.WriteLine("Received message:——————————");
+            ParseHttpMessage(httpMessageString);
+            Console.WriteLine("————————————End of message.");
 
             if (httpMessageString.StartsWith("POST"))
             {
