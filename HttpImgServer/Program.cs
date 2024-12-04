@@ -25,10 +25,11 @@ namespace HttpImgServer
 
             while (true)
             {
+                Console.WriteLine("————————————————");
                 Console.WriteLine("INFO:wait for a client to connect...");
                 var clientSocket = serverSocket.Accept();
-                Console.WriteLine("INFO:Client connected.");
-                Console.WriteLine("INFO:Start handling client request...");
+                //Console.WriteLine("INFO:Client connected.");
+                //Console.WriteLine("INFO:Start handling client request...");
                 HandleClient(clientSocket);
                 Console.WriteLine("INFO:Client request handled.");
             }
@@ -45,19 +46,19 @@ namespace HttpImgServer
             int bytesReaded = 0;
 
             bytesRead = clientSocket.Receive(buffer);
-            Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
+            //Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
             receivedData.AddRange(buffer.Take(bytesRead));
             bytesReaded += bytesRead;
             if (bytesRead < 4096)
             {
-                Console.WriteLine("INFO:Recived Over");
+                //Console.WriteLine("INFO:Recived Over");
             }
             else
             {
                 while ((bytesRead = clientSocket.Receive(buffer)) > 0)
                 {
                     // 将接收到的字节添加到接收数据列表
-                    Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
+                    //Console.WriteLine("INFO:Received Length :" + bytesRead + " bytes.");
                     receivedData.AddRange(buffer.Take(bytesRead));
                     bytesReaded += bytesRead;
                     // 如果接收的数据少于缓冲区的大小，表示接收完毕
@@ -67,7 +68,7 @@ namespace HttpImgServer
                     }
                 }
 
-                Console.WriteLine("INFO:Recived Over");
+                //Console.WriteLine("INFO:Recived Over");
             }
 
             // 处理接收到的完整数据
@@ -96,7 +97,7 @@ namespace HttpImgServer
             }
 
             clientSocket.Close();
-            Console.WriteLine("INFO:Closing connection.");
+            //Console.WriteLine("INFO:Closing connection.");
         }
 
         private static void HandleJpgUpload(Socket clientSocket, byte[] buffer, int bytesRead,string httpMessage)
