@@ -1,2 +1,3 @@
-# My-Image-Server
-A homework in Computer Internet Coding course
+2024大二时期 计算机网络课程的结课作业 主要是学习直接用底层socket进行网络传输
+
+项目实现了一个使用程序进行简单的图片传输，分为客户端部分和服务端部分，此为服务端部分。
